@@ -16,13 +16,13 @@ read -r URL SHA < <(curl -fsSL https://releases.unraid.net/json |
 echo "Downloading Unraid $VER"
 curl -fsSL -o "$WORK/unraid.zip" "$URL"
 echo "$SHA  $WORK/unraid.zip" | sha256sum -c --quiet -
-python3 -I -c 'import sys, zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2], ["bzroot", "bzmodules"])' \
+python3 -I -c 'import sys, zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2], ["bzroot", "bzmodules", "bzfirmware"])' \
   "$WORK/unraid.zip" "$WORK"
 rm "$WORK/unraid.zip"
 cp "$PKG" "$WORK/pkg.txz"
 
 # bzroot = uncompressed microcode cpio, then the root cpio compressed with zstd (7.3) or xz.
-# /usr is not in bzroot: Unraid mounts the bzmodules squashfs there.
+# /usr is not in bzroot but in a squashfs: bzfirmware up to 7.2, bzmodules from 7.3.
 docker run --rm -v "$WORK:/w" debian:trixie-slim bash -euc '
   apt-get -qq update >/dev/null && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y xz-utils zstd cpio squashfs-tools >/dev/null
   END=$(grep -obUa "TRAILER!!!" /w/bzroot | head -1 | cut -d: -f1)
@@ -33,7 +33,11 @@ docker run --rm -v "$WORK:/w" debian:trixie-slim bash -euc '
   mkdir /r && cd /r
   tail -c +$((OFF + 1)) /w/rest | $DEC | cpio -idm --quiet 2>/dev/null || true
   [ -f /r/etc/unraid-version ] || { echo "FAIL: could not unpack bzroot"; exit 1; }
-  unsquashfs -q -n -f -d /r/usr /w/bzmodules lib64 >/dev/null
+  for IMG in /w/bzmodules /w/bzfirmware; do   # whichever image carries lib64 is /usr
+    if unsquashfs -l "$IMG" lib64 2>/dev/null | grep -q "^squashfs-root/lib64/"; then
+      unsquashfs -q -n -f -d /r/usr "$IMG" lib64 >/dev/null
+    fi
+  done
   mkdir -p /r/dev && cp -a /dev/null /dev/random /dev/urandom /r/dev/   # OpenSSL needs a seed source
   echo "Unraid root: $(cat /r/etc/unraid-version)"
   tar xJf /w/pkg.txz -C /r && (cd /r && sh install/doinst.sh)
