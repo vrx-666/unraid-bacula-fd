@@ -1,0 +1,110 @@
+<?xml version='1.0' standalone='yes'?>
+<!DOCTYPE PLUGIN [
+<!ENTITY name      "bacula-fd">
+<!ENTITY author    "vrx-666">
+<!ENTITY version   "@VERSION@">
+<!ENTITY pkg       "bacula-fd-15.0.3-x86_64-1_vrx.txz">
+<!ENTITY md5       "@MD5@">
+<!ENTITY github    "vrx-666/unraid-bacula-fd">
+<!ENTITY pluginURL "https://github.com/&github;/releases/latest/download/&name;.plg">
+<!ENTITY plgdir    "/boot/config/plugins/&name;">
+]>
+
+<PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.0.0">
+
+<!-- Template: @VERSION@ and @MD5@ are filled in by .github/workflows/release.yml. -->
+
+<CHANGES>
+See https://github.com/&github;/releases
+</CHANGES>
+
+<!-- Drop packages from previous versions. -->
+<FILE Run="/bin/bash">
+<INLINE>
+rm -f $(ls &plgdir;/*.txz 2>/dev/null &#124; grep -v '&pkg;')
+</INLINE>
+</FILE>
+
+<FILE Name="&plgdir;/&pkg;" Run="upgradepkg --install-new --reinstall">
+<URL>https://github.com/&github;/releases/download/&version;/&pkg;</URL>
+<MD5>&md5;</MD5>
+</FILE>
+
+<FILE Name="/etc/rc.d/rc.bacula-fd" Mode="0755">
+<INLINE>
+<![CDATA[
+#!/bin/bash
+# Start/stop the Bacula file daemon. Config lives on the flash drive.
+CONF=/boot/config/plugins/bacula-fd/bacula-fd.conf
+
+case "$1" in
+  start)
+    pgrep -x bacula-fd >/dev/null && { echo "bacula-fd already running"; exit 0; }
+    mkdir -p /var/lib/bacula
+    /usr/sbin/bacula-fd -t -c "$CONF" || { echo "bacula-fd: config test failed, not starting"; exit 1; }
+    /usr/sbin/bacula-fd -c "$CONF" && echo "bacula-fd started"
+    ;;
+  stop)
+    pkill -x bacula-fd && echo "bacula-fd stopped"
+    ;;
+  restart)
+    "$0" stop; sleep 1; "$0" start
+    ;;
+  status)
+    pgrep -x bacula-fd >/dev/null && echo "bacula-fd is running" || { echo "bacula-fd is stopped"; exit 1; }
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart|status}"; exit 1
+    ;;
+esac
+]]>
+</INLINE>
+</FILE>
+
+<!-- First install: write a default config with a random password. Never overwrite an existing one. -->
+<FILE Run="/bin/bash">
+<INLINE>
+<![CDATA[
+CONF=/boot/config/plugins/bacula-fd/bacula-fd.conf
+if [ ! -f "$CONF" ]; then
+  PASS=$(openssl rand -base64 33)
+  cat > "$CONF" <<EOF
+# Bacula file daemon config. Edit, then: /etc/rc.d/rc.bacula-fd restart
+# The Director below must have a matching Client resource with this Password.
+Director {
+  Name = bacula-dir
+  Password = "$PASS"
+}
+
+FileDaemon {
+  Name = $(hostname)-fd
+  FDport = 9102
+  WorkingDirectory = /var/lib/bacula
+  Pid Directory = /var/run
+  Plugin Directory = /usr/lib64/bacula
+  Maximum Concurrent Jobs = 20
+}
+
+Messages {
+  Name = Standard
+  director = bacula-dir = all, !skipped, !restored
+}
+EOF
+  echo "Created $CONF -- set the Director name to match your server."
+  echo "Client password: $PASS"
+fi
+/etc/rc.d/rc.bacula-fd start
+]]>
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+/etc/rc.d/rc.bacula-fd stop
+removepkg &pkg;
+rm -f /etc/rc.d/rc.bacula-fd &plgdir;/*.txz
+echo "bacula-fd removed. Config kept in &plgdir;/"
+</INLINE>
+</FILE>
+
+</PLUGIN>
