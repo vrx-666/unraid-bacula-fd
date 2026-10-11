@@ -61,6 +61,22 @@ esac
 </INLINE>
 </FILE>
 
+<!-- An FD reading /mnt keeps the shares busy and the array stop hangs (tested on 7.3.3).
+     Stop it when the array starts stopping (a running job fails), start it again once stopped. -->
+<FILE Name="/usr/local/emhttp/plugins/&name;/event/stopping" Mode="0755">
+<INLINE>
+#!/bin/bash
+/etc/rc.d/rc.bacula-fd stop | logger -t bacula-fd
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/event/stopped" Mode="0755">
+<INLINE>
+#!/bin/bash
+/etc/rc.d/rc.bacula-fd start | logger -t bacula-fd
+</INLINE>
+</FILE>
+
 <!-- First install: write a default config with a random password. Never overwrite an existing one. -->
 <FILE Run="/bin/bash">
 <INLINE>
@@ -103,6 +119,7 @@ fi
 /etc/rc.d/rc.bacula-fd stop
 removepkg &pkg;
 rm -f /etc/rc.d/rc.bacula-fd &plgdir;/*.txz
+rm -rf /usr/local/emhttp/plugins/&name;
 echo "bacula-fd removed. Config kept in &plgdir;/"
 </INLINE>
 </FILE>
