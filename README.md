@@ -4,6 +4,8 @@ A native [Bacula](https://www.bacula.org) 15 file daemon (`bacula-fd`) packaged 
 It lets an existing Bacula Director back up the Unraid host itself — the flash drive (`/boot/config`),
 VM definitions (`/etc/libvirt`), appdata or anything else — without a container or bind mounts.
 
+Support: [Unraid forum thread](https://forums.unraid.net/topic/200900-plugin-bacula-file-daemon-bacula-fd/)
+
 ## Requirements
 
 - Unraid 7.0.0 or newer

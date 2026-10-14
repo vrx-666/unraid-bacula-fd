@@ -11,7 +11,7 @@
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.0.0"
-        icon="hdd-o" support="https://github.com/&github;/issues">
+        icon="hdd-o" support="https://forums.unraid.net/topic/200900-plugin-bacula-file-daemon-bacula-fd/">
 
 <!-- Template: @VERSION@ and @MD5@ are filled in by .github/workflows/release.yml. -->
 
