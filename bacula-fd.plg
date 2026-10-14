@@ -1,7 +1,7 @@
 <?xml version='1.0' standalone='yes'?>
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "bacula-fd">
-<!ENTITY author    "vrx-666">
+<!ENTITY author    "VRX">
 <!ENTITY version   "@VERSION@">
 <!ENTITY pkg       "bacula-fd-15.0.3-x86_64-1_vrx.txz">
 <!ENTITY md5       "@MD5@">
@@ -185,7 +185,8 @@ EOF
   echo "Created $CONF -- set the Director name to match your server."
   echo "Client password: $PASS"
 fi
-/etc/rc.d/rc.bacula-fd start
+# Restart, not start: after an update the old binary would keep running until reboot.
+/etc/rc.d/rc.bacula-fd restart
 ]]>
 </INLINE>
 </FILE>

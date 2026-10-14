@@ -64,6 +64,9 @@ From the command line: `/etc/rc.d/rc.bacula-fd start|stop|restart|status`.
   and still report *Backup OK*. Schedule jobs for times when the array is up and check the
   number of files backed up.
 
+- **Updating the plugin restarts the daemon**, so a backup job running at that moment fails. Keep this in
+  mind if you let plugins update automatically.
+
 ## Restoring the flash drive
 
 When restoring `/boot/config` to a new flash drive, the Unraid licence key is tied to the old drive's GUID —
