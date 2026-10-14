@@ -18,10 +18,12 @@
 See https://github.com/&github;/releases
 </CHANGES>
 
-<!-- Drop packages from previous versions. -->
+<!-- Drop packages and files from previous versions: plugin never overwrites an existing file,
+     so on update the INLINE files below would otherwise stay old. -->
 <FILE Run="/bin/bash">
 <INLINE>
 rm -f $(ls &plgdir;/*.txz 2>/dev/null &#124; grep -v '&pkg;')
+rm -rf /usr/local/emhttp/plugins/&name; /etc/rc.d/rc.bacula-fd
 </INLINE>
 </FILE>
 
@@ -58,6 +60,79 @@ case "$1" in
     ;;
 esac
 ]]>
+</INLINE>
+</FILE>
+
+<!-- Settings > Network Services > Bacula File Daemon -->
+<FILE Name="/usr/local/emhttp/plugins/&name;/BaculaFD.page">
+<INLINE>
+<![CDATA[
+Menu="NetworkServices"
+Title="Bacula File Daemon"
+Icon="hdd-o"
+Tag="hdd-o"
+---
+<?
+$file = "/boot/config/plugins/bacula-fd/bacula-fd.conf";
+$text = str_replace(["\r\n","\r"], "\n", @file_get_contents($file) ?: '');
+$running = exec("pgrep -x bacula-fd") !== '';
+?>
+<form markdown="1" method="POST" action="/update.php" target="progressFrame">
+<input type="hidden" name="#command" value="/plugins/bacula-fd/scripts/rc">
+_(Status)_:
+: <?=$running ? "<span class='green-text'>_(Running)_</span>" : "<span class='red-text'>_(Stopped)_</span>"?>
+
+&nbsp;
+: <button type="submit" name="#arg[1]" value="start" style="max-width:500px" <?=$running?'disabled':''?>>_(Start)_</button>
+  <button type="submit" name="#arg[1]" value="stop" style="max-width:500px" <?=$running?'':'disabled'?>>_(Stop)_</button>
+  <button type="submit" name="#arg[1]" value="restart" style="max-width:500px" <?=$running?'':'disabled'?>>_(Restart)_</button>
+</form>
+
+<script>
+function saveConf() {
+  $.post('/plugins/bacula-fd/include/save.php', {text: $('#conf').val(), csrf_token: csrf_token}, function(err) {
+    if (err) swal({title: "_(Configuration not saved)_", text: $('<pre style="text-align:left">').text(err).prop('outerHTML'), html: true, type: 'error'});
+    else location.reload();
+  });
+}
+</script>
+<form markdown="1" onsubmit="return false">
+_(Configuration)_:
+: <textarea id="conf" spellcheck="false" cols="80" rows="<?=substr_count($text,"\n")+1?>" style="font-family:monospace;max-width:500px"><?=htmlspecialchars($text)?></textarea>
+
+&nbsp;
+: <input type="button" value="_(Apply)_" onclick="saveConf()" style="max-width:500px"><input type="button" value="_(Done)_" onclick="done()" style="max-width:500px">
+
+&nbsp;
+: <span>_(The configuration is checked before saving. If it has errors, it is not saved and your changes stay in the editor.)_<br>
+  _(Restart the daemon to load the new configuration. A running backup job will fail.)_<br>
+  _(The daemon starts automatically when the server boots. Stopping the array restarts it, even if it was stopped here.)_</span>
+</form>
+]]>
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/include/save.php">
+<INLINE>
+<![CDATA[
+<?
+// Called by BaculaFD.page: save the config only if bacula-fd accepts it. Prints errors, nothing on success.
+$file = "/boot/config/plugins/bacula-fd/bacula-fd.conf";
+$tmp = tempnam("/tmp", "bacula-fd");
+file_put_contents($tmp, str_replace(["\r\n","\r"], "\n", $_POST['text'] ?? ''));
+exec("/usr/sbin/bacula-fd -t -c ".escapeshellarg($tmp)." 2>&1", $out, $rc);
+if ($rc === 0) copy($tmp, $file);
+else echo str_replace($tmp, "bacula-fd.conf", implode("\n", array_unique($out)));
+unlink($tmp);
+?>]]>
+</INLINE>
+</FILE>
+
+<!-- update.php only runs commands under the webGui root. -->
+<FILE Name="/usr/local/emhttp/plugins/&name;/scripts/rc" Mode="0755">
+<INLINE>
+#!/bin/bash
+exec /etc/rc.d/rc.bacula-fd "$1" 2>&amp;1
 </INLINE>
 </FILE>
 
