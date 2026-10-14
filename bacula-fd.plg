@@ -10,7 +10,8 @@
 <!ENTITY plgdir    "/boot/config/plugins/&name;">
 ]>
 
-<PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.0.0">
+<PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.0.0"
+        icon="hdd-o" support="https://github.com/&github;/issues">
 
 <!-- Template: @VERSION@ and @MD5@ are filled in by .github/workflows/release.yml. -->
 
