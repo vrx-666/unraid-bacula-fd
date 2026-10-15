@@ -6,6 +6,10 @@ on:
       version:
         description: "Plugin version, e.g. 2026.10.11"
         required: true
+      skip_prerelease:
+        description: "Release even if the current Unraid beta/rc fails (urgent fix unrelated to it)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -13,6 +17,8 @@ permissions:
 jobs:
   ci:
     uses: ./.github/workflows/ci.yml
+    with:
+      skip_prerelease: ${{ inputs.skip_prerelease }}
 
   release:
     needs: ci

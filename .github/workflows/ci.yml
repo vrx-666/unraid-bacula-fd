@@ -12,6 +12,11 @@ on:
         required: false
         default: ""
   workflow_call:
+    inputs:
+      skip_prerelease:
+        description: "Leave the current Unraid beta/rc out of the test matrix"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -25,6 +30,7 @@ jobs:
       - id: v
         env:
           ONE: ${{ inputs.unraid_version }}
+          SKIP_NEXT: ${{ inputs.skip_prerelease }}
         run: |
           if [ -n "$ONE" ]; then
             list=$(jq -cn --arg v "$ONE" '[$v]')
@@ -33,8 +39,10 @@ jobs:
               [.[].version | select(startswith("7."))]
               | group_by(split(".")[0:2] | join("."))
               | map(max_by(split(".") | map(tonumber))) + ["7.0.0"]')
-            next=$(curl -fsSL https://releases.unraid.net/os?branch=next | jq -r .version)   # current beta/rc
-            list=$(jq -c --arg n "$next" '. + [$n] | unique' <<< "$list")
+            if [ "$SKIP_NEXT" != true ]; then
+              next=$(curl -fsSL https://releases.unraid.net/os?branch=next | jq -r .version)   # current beta/rc
+              list=$(jq -c --arg n "$next" '. + [$n] | unique' <<< "$list")
+            fi
           fi
           echo "Unraid versions: $list"
           echo "list=$list" >> "$GITHUB_OUTPUT"
