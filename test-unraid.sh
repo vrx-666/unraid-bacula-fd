@@ -10,7 +10,11 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
 read -r URL SHA < <(curl -fsSL https://releases.unraid.net/json |
-  jq -r --arg v "$VER" '.[] | select(.version == $v) | "\(.url) \(.sha256)"')
+  jq -r --arg v "$VER" '.[] | select(.version == $v) | "\(.url) \(.sha256)"') || true
+if [ -z "${URL:-}" ]; then   # not stable: try the current beta/rc (the zip sits next to its changelog .txt)
+  read -r URL SHA < <(curl -fsSL "https://releases.unraid.net/os?branch=next" |
+    jq -r --arg v "$VER" 'select(.version == $v) | "\(.changelog | sub("\\.txt$"; ".zip")) \(.sha256)"') || true
+fi
 [ -n "${URL:-}" ] || { echo "Unraid $VER not found in release list" >&2; exit 1; }
 
 echo "Downloading Unraid $VER"
