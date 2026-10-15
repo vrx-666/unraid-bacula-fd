@@ -1,5 +1,5 @@
 name: CI
-run-name: CI ${{ inputs.unraid_version || github.event.head_commit.message || github.ref_name }}
+run-name: ${{ inputs.unraid_version && format('CI {0}', inputs.unraid_version) || '' }}
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       unraid_version:
-        description: "Test only this Unraid version (empty = 7.0.0 + latest of each 7.x line)"
+        description: "Test only this Unraid version (empty = 7.0.0 + latest of each 7.x line + current beta/rc)"
         required: false
         default: ""
   workflow_call:
@@ -32,7 +32,9 @@ jobs:
             list=$(curl -fsSL https://releases.unraid.net/json | jq -c '
               [.[].version | select(startswith("7."))]
               | group_by(split(".")[0:2] | join("."))
-              | map(max_by(split(".") | map(tonumber))) + ["7.0.0"] | unique')
+              | map(max_by(split(".") | map(tonumber))) + ["7.0.0"]')
+            next=$(curl -fsSL https://releases.unraid.net/os?branch=next | jq -r .version)   # current beta/rc
+            list=$(jq -c --arg n "$next" '. + [$n] | unique' <<< "$list")
           fi
           echo "Unraid versions: $list"
           echo "list=$list" >> "$GITHUB_OUTPUT"
