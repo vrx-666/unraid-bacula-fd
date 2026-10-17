@@ -60,6 +60,7 @@ jobs:
   test:
     needs: [versions, build]
     runs-on: ubuntu-latest
+    timeout-minutes: 20   # a run takes a few minutes; never hang for the 6 h default
     strategy:
       fail-fast: false
       matrix:
